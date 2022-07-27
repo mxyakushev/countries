@@ -21,6 +21,24 @@ let selected;
 
 // LISTENERS
 
+window.addEventListener('load', () => {
+    inactive();
+    loader.classList.remove('hide');
+    requestApiAll();
+})
+
+searchButton.addEventListener('click', () => {
+    if(search.value.length > 0){
+        startSearch();
+    }
+});
+
+window.addEventListener('keydown', (e) => {
+    if(e.key == 'Enter' && search.value.length > 0){
+        startSearch();
+    }
+});
+
 changeMode.addEventListener('click', () => {
     if(!document.body.classList.contains('dark')){
         document.body.classList.add('dark');
@@ -32,3 +50,157 @@ changeMode.addEventListener('click', () => {
         localStorage.clear();
     }
 });
+
+filter.addEventListener('click', () => {
+    filterList.classList.toggle('hide');
+    icon.classList.toggle('rotate');
+});
+
+filterItems.forEach(item => {
+    item.addEventListener('click', () => {
+        icon.classList.toggle('rotate');
+        selectedItem(filterItems, item);
+    })
+})
+
+// FUNCTIONS
+
+checkMode();
+
+function checkMode(){
+    if (pageMode) {
+        modeText.innerText = 'Light Mode';
+        document.body.classList.add('dark');
+    } else {
+        modeText.innerText = 'Dark Mode';
+        document.body.classList.remove('dark');
+    }
+}
+
+function startSearch(){
+    clearPage();
+    searchByCountry(search.value);
+    filterWrapper.classList.add('hide');
+    allCountriesButton.classList.remove('hide');
+    search.value = '';
+}
+
+function searchByCountry(country){
+    const findCountry = itemsArr.find(el => {
+        if (country === el.name.common || country === el.name.common.toLowerCase()
+            || country === el.name.common.toUpperCase()) {
+            return el;
+        }
+    })
+
+    if(findCountry){
+        templateHTML([findCountry]);
+    } else {
+        errorTemplate('Something went wrong.');
+    }
+}
+
+function clearPage(){
+    countriesWrapper.innerHTML = '';
+}
+
+function selectedItem(arr, item) {
+    arr.forEach(el => {
+        if (el === item) {
+            el.classList.add('selected');
+            selected = el;
+        } else {
+            el.classList.remove('selected');
+        }
+    });
+    clearPage();
+    filterList.classList.add('hide');
+    if (selected.innerText == 'All') {
+        templateHTML(itemsArr);
+    } else {
+        const regionArr = itemsArr.filter(filterByRegion)
+        templateHTML(regionArr);
+    }
+}
+
+function filterByRegion(item){
+    if (item.region === selected.innerText) {
+        return item;
+    } else {
+        return false
+    }
+}
+
+function inactive(){
+    search.classList.add('inactive');
+    filterWrapper.classList.add('inactive');
+}
+
+function active(){
+    search.classList.remove('inactive');
+    filterWrapper.classList.remove('inactive');
+}
+
+// CREATING PAGE TEMPLATES
+
+function templateHTML(data) {
+    let template = '';
+    loader.classList.add('hide');
+    data.forEach(item => {
+        template += `<div class="item">
+                        <div class="image-wrapper">
+                            <img src="${item.flags.png}" alt="flag">
+                        </div>
+                        <div class="info">
+                            <div class="country-name">${item.name.common}</div>
+                            <div class="population"><span>Population:</span> <span>${item.population}</span></div>
+                            <div class="region"><span>Region:</span> <span>${item.region}</span></div>
+                            <div class="capital"><span>Capital:</span> <span>${item.capital || 'none'}</span></div>
+                        </div>
+                    </div>`
+    })
+    countriesWrapper.insertAdjacentHTML('afterbegin', template);
+    active();
+}
+
+function errorTemplate(error){
+    let templateErr = '';
+    templateErr = `<div class="error">
+                            ${error}
+                        </div>`;
+    countriesWrapper.insertAdjacentHTML('afterbegin', templateErr);
+}
+
+// REQUEST API
+
+function requestApiAll() {
+    fetch(`${API_URL}/all`)
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            }
+
+            throw new Error('Something went wrong.');
+        })
+        .then(data => {
+            itemsArr = data;
+            templateHTML(itemsArr)
+        })
+        .catch(err => errorTemplate(err.message))
+}
+
+// FUNCTIONS - LISTENERS
+
+function allCountries(){
+    allCountriesButton.classList.add('hide');
+    filterWrapper.classList.remove('hide');
+    clearPage();
+    filterItems.forEach(item => {
+        if(item.innerText === 'All'){
+            item.classList.add('selected');
+        } else {
+            item.classList.remove('selected');
+        }
+    })
+    templateHTML(itemsArr);
+}
